@@ -13,6 +13,7 @@ import (
 
 	"DnsSpoofer/internal/dns"
 	"DnsSpoofer/internal/proxy"
+	"DnsSpoofer/internal/status"
 	"DnsSpoofer/internal/udpsink"
 )
 
@@ -44,12 +45,19 @@ var (
 		// GitHub Copilot (only Copilot-specific domains, not general GitHub)
 		".githubcopilot.com",
 		".individual.githubcopilot.com",
-		".api.individual.githubcopilot.com", // Explicit API endpoint
+		".api.individual.githubcopilot.com",
 		".business.githubcopilot.com",
 		".enterprise.githubcopilot.com",
 		".copilot-proxy.githubusercontent.com",
 		".origin-tracker.githubusercontent.com",
 		".copilot-telemetry.githubusercontent.com",
+		// Anthropic Claude
+		".anthropic.com",
+		".claude.ai",
+		".claude.com",
+		".clau.de",
+		".claudeusercontent.com",
+		".claudemcpclient.com",
 	}
 	defaultUpstreamDNS = []string{"8.8.8.8:53", "1.1.1.1:53"}
 )
@@ -69,6 +77,7 @@ func main() {
 	spoofSuffixes := flag.String("spoof-suffixes", strings.Join(defaultSpoofSuffixes, ","), "Comma-separated list of domain suffixes to spoof")
 	upstreamDNS := flag.String("upstream-dns", strings.Join(defaultUpstreamDNS, ","), "Comma-separated list of upstream DNS servers")
 	resolverDNS := flag.String("resolver-dns", "8.8.8.8:53", "DNS server for proxy to resolve backend hosts (to avoid loops)")
+	statusAddr := flag.String("status-addr", "127.0.0.1:9100", "Status API listen address")
 
 	flag.Parse()
 
@@ -137,6 +146,15 @@ func main() {
 		log.Fatalf("Failed to start UDP sink: %v", err)
 	}
 
+	// Create and start status API server
+	statusServer := status.New(status.Config{
+		ListenAddr: *statusAddr,
+	}, dnsServer, proxyServer, udpSink)
+
+	if err := statusServer.Start(); err != nil {
+		log.Fatalf("Failed to start status server: %v", err)
+	}
+
 	log.Println("All servers started successfully")
 
 	// Wait for shutdown signal
@@ -162,6 +180,10 @@ func main() {
 	}
 	if err := udpSink.Shutdown(ctx); err != nil {
 		log.Printf("UDP sink shutdown error: %v", err)
+		shutdownErr = err
+	}
+	if err := statusServer.Shutdown(ctx); err != nil {
+		log.Printf("Status server shutdown error: %v", err)
 		shutdownErr = err
 	}
 

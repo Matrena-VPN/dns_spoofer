@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>DNSSettings</key>
+			<dict>
+				<key>DNSProtocol</key>
+				<string>HTTPS</string>
+				<key>ServerAddresses</key>
+				<array>
+					<string>2.27.27.134</string>
+				</array>
+				<key>ServerURL</key>
+				<string>https://dns.kakadu-vpn.com/dns-query</string>
+			</dict>
+			<key>PayloadDescription</key>
+			<string>Configures device to use Kakadu DNS over HTTPS</string>
+			<key>PayloadDisplayName</key>
+			<string>Kakadu DNS over HTTPS</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.dnsSettings.managed.5cba6af5-3447-429a-a00c-b29c33cedf89</string>
+			<key>PayloadType</key>
+			<string>com.apple.dnsSettings.managed</string>
+			<key>PayloadUUID</key>
+			<string>5CBA6AF5-3447-429A-A00C-B29C33CEDF89</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>ProhibitDisablement</key>
+			<false/>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Configures device to use Kakadu DNS over HTTPS for AI services proxy</string>
+	<key>PayloadDisplayName</key>
+	<string>Kakadu DNS</string>
+	<key>PayloadIdentifier</key>
+	<string>com.kakadu-vpn.dns</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>E34008E6-0519-4EF7-84C8-CD93352E9273</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

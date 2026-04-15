@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kakadu DNS</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0A0A0A;
+  --surface:#202020;
+  --border:#2B2B2B;
+  --card:#252525;
+  --text:#F5F5F5;
+  --text-inv:#1A1A1A;
+  --secondary:#B0B0B0;
+  --tertiary:#C2C2C2;
+  --inactive:#666666;
+  --primary:#FF4245;
+  --primary-bg:rgba(255,66,69,.08);
+  --primary-br:rgba(255,66,69,.18);
+  --green:#3C8563;
+  --green-bg:rgba(60,133,99,.1);
+  --green-br:rgba(60,133,99,.25);
+  --red:#FF5454;
+  --red-bg:rgba(255,84,84,.08);
+  --red-br:rgba(255,84,84,.2);
+  --blue:#2BABEE;
+  --orange:#FFA902;
+  --yellow:#FFB300;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:28px 20px 40px}
+
+/* ─── Hero ─── */
+.hero{text-align:center;padding:36px 24px 28px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:18px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(255,66,69,.04) 0%,transparent 65%);pointer-events:none}
+.hero-title{font-size:1.5rem;font-weight:700;letter-spacing:-.02em}
+.hero-title span{color:var(--primary)}
+.hero-sub{color:var(--secondary);font-size:.82rem;margin:4px 0 24px}
+.check-wrap{min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.check-ring{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;transition:all .4s ease}
+.check-ring.ok{background:var(--green-bg);border:2px solid var(--green-br);color:var(--green)}
+.check-ring.fail{background:var(--red-bg);border:2px solid var(--red-br);color:var(--red)}
+.check-ring.wait{background:rgba(102,102,102,.08);border:2px solid rgba(102,102,102,.15);color:var(--inactive)}
+.check-ring.wait svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.check-msg{font-size:.95rem;font-weight:600;transition:color .3s}
+.check-msg.ok{color:var(--green)}
+.check-msg.fail{color:var(--red)}
+.check-msg.wait{color:var(--inactive)}
+.check-mode{font-size:.72rem;font-weight:600;padding:3px 12px;border-radius:99px;min-height:22px}
+.check-mode.dns{background:rgba(43,171,238,.1);color:var(--blue)}
+.check-mode.doh{background:rgba(60,133,99,.12);color:var(--green)}
+.check-ips{font-size:.78rem;color:var(--secondary);font-family:'SF Mono',Consolas,monospace}
+.check-ips strong{color:var(--text);font-weight:500}
+.btn{padding:9px 28px;border-radius:8px;border:none;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-ghost{background:var(--primary-bg);color:var(--primary);border:1px solid var(--primary-br)}
+.btn-ghost:hover{background:rgba(255,66,69,.15)}
+
+/* ─── Tabs ─── */
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:20px}
+.tab{flex:1;padding:10px 0;text-align:center;font-size:.82rem;font-weight:600;color:var(--inactive);border:none;background:transparent;border-radius:8px;cursor:pointer;transition:all .25s}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--primary-bg);color:var(--primary)}
+.pane{display:none;animation:fadeUp .3s ease}
+.pane.on{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ─── Stats ─── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+.st{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;transition:border-color .2s}
+.st:hover{border-color:rgba(255,66,69,.15)}
+.st-l{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--inactive);margin-bottom:2px}
+.st-v{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ─── Domain Groups ─── */
+.dg{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:10px;transition:border-color .2s}
+.dg:hover{border-color:rgba(255,66,69,.12)}
+.dg-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.dg-icon{width:28px;height:28px;border-radius:7px;object-fit:contain;background:#fff;padding:3px}
+.dg-name{font-size:.88rem;font-weight:600;flex:1}
+.dg-count{font-size:.68rem;color:var(--secondary);background:rgba(176,176,176,.08);padding:2px 8px;border-radius:99px}
+.dg-tags{display:flex;flex-wrap:wrap;gap:5px}
+.dt{font-size:.72rem;font-family:'SF Mono',Consolas,monospace;padding:3px 9px;border-radius:6px;transition:all .2s}
+
+.dt-openai{background:rgba(16,163,127,.06);border:1px solid rgba(16,163,127,.15);color:#10a37f}
+.dt-google{background:rgba(66,133,244,.06);border:1px solid rgba(66,133,244,.15);color:#4285f4}
+.dt-cursor{background:rgba(43,171,238,.06);border:1px solid rgba(43,171,238,.15);color:var(--blue)}
+.dt-ms{background:rgba(0,120,212,.06);border:1px solid rgba(0,120,212,.15);color:#0078d4}
+.dt-gh{background:rgba(245,245,245,.05);border:1px solid rgba(245,245,245,.1);color:var(--tertiary)}
+.dt-claude{background:rgba(217,119,87,.06);border:1px solid rgba(217,119,87,.15);color:#d97757}
+
+/* ─── Setup ─── */
+.setup-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.doh-bar{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.doh-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--inactive);margin-bottom:4px}
+.doh-url{font-family:'SF Mono',Consolas,monospace;font-size:.85rem;color:var(--primary);font-weight:500;word-break:break-all}
+.copy{background:var(--primary-bg);border:1px solid var(--primary-br);color:var(--primary);font-size:.72rem;padding:5px 14px;border-radius:6px;cursor:pointer;white-space:nowrap;font-weight:600;transition:all .15s}
+.copy:hover{background:rgba(255,66,69,.18)}
+.plts{display:flex;gap:0;border-bottom:1px solid var(--border)}
+.plt{flex:1;padding:11px 0;text-align:center;font-size:.75rem;font-weight:600;color:var(--inactive);cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all .2s}
+.plt:hover{color:var(--text)}
+.plt.on{color:var(--primary);border-bottom-color:var(--primary);background:rgba(255,66,69,.03)}
+.pi{display:none;padding:20px;animation:fadeUp .25s ease}
+.pi.on{display:block}
+.inst{font-size:.83rem;color:var(--secondary);line-height:1.7}
+.inst ol{padding-left:18px;margin:6px 0 10px}
+.inst li{margin-bottom:4px}
+.inst code{background:var(--card);padding:2px 6px;border-radius:4px;font-size:.78rem;color:var(--primary)}
+.inst strong{color:var(--text);font-weight:600}
+.inst a{color:var(--primary);text-decoration:none}
+.inst a:hover{text-decoration:underline}
+.cmd{background:#111111;border:1px solid var(--card);border-radius:8px;padding:10px 60px 10px 14px;font-family:'SF Mono',Consolas,monospace;font-size:.78rem;color:var(--primary);margin:6px 0 10px;position:relative;word-break:break-all}
+.cmd .copy{position:absolute;top:6px;right:6px}
+
+.foot{text-align:center;color:var(--inactive);font-size:.6rem;padding:16px 0 0;opacity:.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-title"><span>Kakadu</span> DNS</div>
+    <div class="hero-sub">AI Proxy &middot; DNS over HTTPS &middot; Status</div>
+    <div class="check-wrap">
+      <div id="ci" class="check-ring wait"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
+      <div id="cl" class="check-msg wait">Проверяю подключение...</div>
+      <div id="cm" class="check-mode">&nbsp;</div>
+      <div id="cd" class="check-ips">&nbsp;</div>
+      <button id="cb" class="btn btn-ghost" onclick="runCheck()" style="visibility:hidden">Проверить снова</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab on" data-t="stats">Статистика</button>
+    <button class="tab" data-t="domains">Домены</button>
+    <button class="tab" data-t="setup">Настройка</button>
+  </div>
+
+  <!-- Stats Pane -->
+  <div id="t-stats" class="pane on">
+    <div class="stats">
+      <div class="st"><div class="st-l">Uptime</div><div id="uptime" class="st-v" style="color:var(--green);font-size:1.05rem">&mdash;</div></div>
+      <div class="st"><div class="st-l">DNS Queries</div><div id="dnsTotal" class="st-v" style="color:var(--blue)">&mdash;</div></div>
+      <div class="st"><div class="st-l">Spoofed</div><div id="dnsSpoofed" class="st-v" style="color:var(--primary)">&mdash;</div></div>
+      <div class="st"><div class="st-l">Forwarded</div><div id="dnsForwarded" class="st-v" style="color:var(--secondary)">&mdash;</div></div>
+    </div>
+    <div class="stats">
+      <div class="st"><div class="st-l">Tunnels Total</div><div id="proxyTotal" class="st-v" style="color:var(--orange)">&mdash;</div></div>
+      <div class="st"><div class="st-l">Active Now</div><div id="proxyActive" class="st-v" style="color:var(--green)">&mdash;</div></div>
+      <div class="st"><div class="st-l">QUIC Dropped</div><div id="quicDropped" class="st-v" style="color:var(--yellow)">&mdash;</div></div>
+      <div class="st"><div class="st-l">ICMP Sent</div><div id="icmpSent" class="st-v" style="color:var(--blue)">&mdash;</div></div>
+    </div>
+  </div>
+
+  <!-- Domains Pane -->
+  <div id="t-domains" class="pane">
+    <div class="dg">
+      <div class="dg-head">
+        <img class="dg-icon" src="https://www.google.com/s2/favicons?domain=openai.com&sz=64" alt="OpenAI">
+        <div class="dg-name">OpenAI / ChatGPT</div>
+        <span class="dg-count">4</span>
+      </div>
+      <div class="dg-tags">
+        <span class="dt dt-openai">openai.com</span>
+        <span class="dt dt-openai">chatgpt.com</span>
+        <span class="dt dt-openai">oaistatic.com</span>
+        <span class="dt dt-openai">oaiusercontent.com</span>
+      </div>
+    </div>
+
+    <div class="dg">
+      <div class="dg-head">
+        <img class="dg-icon" src="https://www.google.com/s2/favicons?domain=claude.ai&sz=64" alt="Anthropic">
+        <div class="dg-name">Anthropic / Claude</div>
+        <span class="dg-count">6</span>
+      </div>
+      <div class="dg-tags">
+        <span class="dt dt-claude">anthropic.com</span>
+        <span class="dt dt-claude">claude.ai</span>
+        <span class="dt dt-claude">claude.com</span>
+        <span class="dt dt-claude">clau.de</span>
+        <span class="dt dt-claude">claudeusercontent.com</span>
+        <span class="dt dt-claude">claudemcpclient.com</span>
+      </div>
+    </div>
+
+    <div class="dg">
+      <div class="dg-head">
+        <img class="dg-icon" src="https://www.google.com/s2/favicons?domain=gemini.google.com&sz=64" alt="Google">
+        <div class="dg-name">Google Gemini</div>
+        <span class="dg-count">5</span>
+      </div>
+      <div class="dg-tags">
+        <span class="dt dt-google">gemini.google.com</span>
+        <span class="dt dt-google">aistudio.google.com</span>
+        <span class="dt dt-google">ai.google.dev</span>
+        <span class="dt dt-google">generativelanguage.googleapis.com</span>
+        <span class="dt dt-google">makersuite.google.com</span>
+      </div>
+    </div>
+
+    <div class="dg">
+      <div class="dg-head">
+        <img class="dg-icon" src="https://www.google.com/s2/favicons?domain=cursor.com&sz=64" alt="Cursor">
+        <div class="dg-name">Cursor IDE</div>
+        <span class="dg-count">4</span>
+      </div>
+      <div class="dg-tags">
+        <span class="dt dt-cursor">cursor.sh</span>
+        <span class="dt dt-cursor">cursor.com</span>
+        <span class="dt dt-cursor">cursorapi.com</span>
+        <span class="dt dt-cursor">cursor-cdn.com</span>
+      </div>
+    </div>
+
+    <div class="dg">
+      <div class="dg-head">
+        <img class="dg-icon" src="https://www.google.com/s2/favicons?domain=copilot.microsoft.com&sz=64" alt="Microsoft">
+        <div class="dg-name">Microsoft Copilot</div>
+        <span class="dg-count">5</span>
+      </div>
+      <div class="dg-tags">
+        <span class="dt dt-ms">copilot.microsoft.com</span>
+        <span class="dt dt-ms">bing.com</span>
+        <span class="dt dt-ms">bingapis.com</span>
+        <span class="dt dt-ms">edgeservices.bing.com</span>
+        <span class="dt dt-ms">edgecopilot.microsoft.com</span>
+      </div>
+    </div>
+
+    <div class="dg">
+      <div class="dg-head">
+        <img class="dg-icon" src="https://www.google.com/s2/favicons?domain=github.com&sz=64" alt="GitHub">
+        <div class="dg-name">GitHub Copilot</div>
+        <span class="dg-count">8</span>
+      </div>
+      <div class="dg-tags">
+        <span class="dt dt-gh">githubcopilot.com</span>
+        <span class="dt dt-gh">individual.githubcopilot.com</span>
+        <span class="dt dt-gh">api.individual.githubcopilot.com</span>
+        <span class="dt dt-gh">business.githubcopilot.com</span>
+        <span class="dt dt-gh">enterprise.githubcopilot.com</span>
+        <span class="dt dt-gh">copilot-proxy.githubusercontent.com</span>
+        <span class="dt dt-gh">origin-tracker.githubusercontent.com</span>
+        <span class="dt dt-gh">copilot-telemetry.githubusercontent.com</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup Pane -->
+  <div id="t-setup" class="pane">
+    <div class="setup-box">
+      <div class="doh-bar">
+        <div>
+          <div class="doh-label">DoH Endpoint</div>
+          <div class="doh-url">https://dns.kakadu-vpn.com/dns-query</div>
+        </div>
+        <button class="copy" onclick="cp('https://dns.kakadu-vpn.com/dns-query',this)">Скопировать</button>
+      </div>
+      <div class="plts">
+        <button class="plt on" data-p="ios">iOS</button>
+        <button class="plt" data-p="macos">macOS</button>
+        <button class="plt" data-p="android">Android</button>
+        <button class="plt" data-p="win">Windows</button>
+        <button class="plt" data-p="browser">Браузер</button>
+        <button class="plt" data-p="linux">Linux</button>
+      </div>
+
+      <div id="p-ios" class="pi on inst">
+        <strong>Установить профиль (рекомендуется)</strong>
+        <ol>
+          <li>Нажмите <a href="/apple-doh.mobileconfig">Установить Kakadu DNS</a> в Safari</li>
+          <li>Перейдите в <strong>Настройки &rarr; Основные &rarr; VPN и устройства</strong></li>
+          <li>Нажмите на профиль и установите</li>
+        </ol>
+        <strong>Или вручную</strong>
+        <ol>
+          <li><strong>Настройки &rarr; Wi-Fi &rarr; (i)</strong> &rarr; <strong>DNS &rarr; Вручную</strong></li>
+          <li>Сервер: <code>2.27.27.134</code></li>
+        </ol>
+      </div>
+
+      <div id="p-macos" class="pi inst">
+        <strong>Профиль (рекомендуется)</strong>
+        <ol>
+          <li>Скачайте <a href="/apple-doh.mobileconfig">kakadu-dns.mobileconfig</a></li>
+          <li>Откройте файл &rarr; <strong>Системные настройки &rarr; Конфиденциальность &rarr; Профили</strong></li>
+          <li>Установите профиль</li>
+        </ol>
+        <strong>Или через терминал</strong>
+        <div class="cmd">sudo networksetup -setdnsservers Wi-Fi 2.27.27.134<button class="copy" onclick="cp('sudo networksetup -setdnsservers Wi-Fi 2.27.27.134',this)">Copy</button></div>
+      </div>
+
+      <div id="p-android" class="pi inst">
+        <strong>Wi-Fi DNS</strong>
+        <ol>
+          <li><strong>Настройки &rarr; Wi-Fi</strong> &rarr; ваша сеть &rarr; <strong>Изменить</strong></li>
+          <li>Расширенные &rarr; IP: <strong>Статический</strong></li>
+          <li>DNS: <code>2.27.27.134</code></li>
+        </ol>
+      </div>
+
+      <div id="p-win" class="pi inst">
+        <ol>
+          <li><strong>Параметры &rarr; Сеть &rarr; Wi-Fi &rarr; Свойства</strong></li>
+          <li><strong>DNS &rarr; Изменить &rarr; Вручную &rarr; IPv4</strong></li>
+          <li>DNS: <code>2.27.27.134</code>, DoH: <strong>Вкл</strong></li>
+        </ol>
+        <div class="cmd">https://dns.kakadu-vpn.com/dns-query<button class="copy" onclick="cp('https://dns.kakadu-vpn.com/dns-query',this)">Copy</button></div>
+      </div>
+
+      <div id="p-browser" class="pi inst">
+        <strong>Chrome / Edge / Brave</strong>
+        <ol>
+          <li><code>chrome://settings/security</code> &rarr; <strong>Безопасный DNS &rarr; Другой</strong></li>
+        </ol>
+        <div class="cmd">https://dns.kakadu-vpn.com/dns-query<button class="copy" onclick="cp('https://dns.kakadu-vpn.com/dns-query',this)">Copy</button></div>
+        <strong>Firefox</strong>
+        <ol>
+          <li><code>about:preferences</code> &rarr; Сеть &rarr; <strong>DNS через HTTPS &rarr; Другой</strong></li>
+        </ol>
+      </div>
+
+      <div id="p-linux" class="pi inst">
+        <div class="cmd">echo "nameserver 2.27.27.134" | sudo tee /etc/resolv.conf<button class="copy" onclick="cp('echo "nameserver 2.27.27.134" | sudo tee /etc/resolv.conf',this)">Copy</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">auto-refresh 3s</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id),fmt=n=>n.toLocaleString('ru-RU');
+
+/* Tabs */
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    $('t-'+t.dataset.t).classList.add('on');
+  };
+});
+
+/* Platform tabs */
+document.querySelectorAll('.plt').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.plt').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.pi').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    $('p-'+t.dataset.p).classList.add('on');
+  };
+});
+
+function cp(t,btn){navigator.clipboard.writeText(t).then(()=>{const o=btn.textContent;btn.textContent='OK!';setTimeout(()=>btn.textContent=o,900)})}
+
+/* Status */
+async function refresh(){
+  try{
+    const r=await fetch('/api/status'),d=await r.json();
+    $('uptime').textContent=d.uptime;
+    $('dnsTotal').textContent=fmt(d.dns.queries_total);
+    $('dnsSpoofed').textContent=fmt(d.dns.queries_spoofed);
+    $('dnsForwarded').textContent=fmt(d.dns.queries_forwarded);
+    $('proxyTotal').textContent=fmt(d.proxy.tunnels_total);
+    $('proxyActive').textContent=fmt(d.proxy.tunnels_active);
+    $('quicDropped').textContent=fmt(d.udp_sink.packets_dropped);
+    $('icmpSent').textContent=fmt(d.udp_sink.icmp_sent);
+  }catch(e){}
+}
+refresh();setInterval(refresh,3000);
+
+/* DoH probe: send a real DNS query to our DoH endpoint and check the answer */
+async function dohProbe(spoofIP){
+  try{
+    const q=new Uint8Array([0,0,1,0,0,1,0,0,0,0,0,0,7,99,104,97,116,103,112,116,3,99,111,109,0,0,1,0,1]);
+    const b64=btoa(String.fromCharCode(...q)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const r=await fetch('/dns-query?dns='+b64);
+    if(!r.ok)return false;
+    const buf=await r.arrayBuffer();
+    const v=new DataView(buf);
+    const ancount=v.getUint16(6);
+    let off=12;
+    while(v.getUint8(off)!==0){
+      if((v.getUint8(off)&0xC0)===0xC0){off+=2;break}
+      off+=v.getUint8(off)+1;
+    }
+    if((v.getUint8(off-2)&0xC0)!==0xC0)off++;
+    off+=4;
+    for(let i=0;i<ancount;i++){
+      if((v.getUint8(off)&0xC0)===0xC0)off+=2;
+      else{while(v.getUint8(off)!==0)off+=v.getUint8(off)+1;off++}
+      const typ=v.getUint16(off);off+=2;off+=2;off+=4;
+      const rdl=v.getUint16(off);off+=2;
+      if(typ===1&&rdl===4){
+        const ip=[v.getUint8(off),v.getUint8(off+1),v.getUint8(off+2),v.getUint8(off+3)].join('.');
+        if(ip===spoofIP)return true;
+      }
+      off+=rdl;
+    }
+  }catch(e){}
+  return false;
+}
+
+/* Check */
+async function runCheck(){
+  const ci=$('ci'),cl=$('cl'),cm=$('cm'),cd=$('cd'),cb=$('cb');
+  ci.className='check-ring wait';
+  ci.innerHTML='<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a10 10 0 0 1 10 10"/></svg>';
+  cl.className='check-msg wait';cl.textContent='Проверяю...';
+  cm.className='check-mode';cm.innerHTML='&nbsp;';
+  cd.innerHTML='&nbsp;';cb.style.visibility='hidden';
+  try{
+    const r=await fetch('/api/check'),d=await r.json();
+    const ipOk=d.using_spoof;
+    const dohOk=await dohProbe(d.spoof_ip);
+    if(ipOk){
+      ci.className='check-ring ok';ci.textContent='✓';
+      cl.className='check-msg ok';cl.textContent='DNS Spoofer активен';
+      cm.className='check-mode dns';cm.textContent='Режим: DNS (весь трафик)';
+    }else if(dohOk){
+      ci.className='check-ring ok';ci.textContent='✓';
+      cl.className='check-msg ok';cl.textContent='DNS Spoofer активен';
+      cm.className='check-mode doh';cm.textContent='Режим: DoH (DNS over HTTPS)';
+    }else{
+      ci.className='check-ring fail';ci.textContent='✗';
+      cl.className='check-msg fail';cl.textContent='DNS Spoofer не подключён';
+      cm.className='check-mode';cm.innerHTML='&nbsp;';
+    }
+    cd.innerHTML='Ваш IP: <strong>'+d.client_ip+'</strong> &nbsp;&middot;&nbsp; Сервер: <strong>'+d.spoof_ip+'</strong>';
+  }catch(e){
+    ci.className='check-ring fail';ci.textContent='!';
+    cl.className='check-msg fail';cl.textContent='Ошибка проверки';
+    cm.className='check-mode';cm.innerHTML='&nbsp;';
+    cd.innerHTML='&nbsp;';
+  }
+  cb.style.visibility='visible';
+}
+runCheck();
+</script>
+</body>
+</html>

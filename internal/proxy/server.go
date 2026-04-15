@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -29,6 +30,9 @@ type Server struct {
 	resolver      *net.Resolver
 	shutdownCh    chan struct{}
 	wg            sync.WaitGroup
+
+	tunnelsTotal  atomic.Uint64
+	tunnelsActive atomic.Int64
 }
 
 // New creates a new proxy server
@@ -201,6 +205,10 @@ func (s *Server) handleConnection(clientConn net.Conn, isTLS bool) {
 	}
 	defer backendConn.Close()
 
+	s.tunnelsTotal.Add(1)
+	s.tunnelsActive.Add(1)
+	defer s.tunnelsActive.Add(-1)
+
 	log.Printf("[Proxy] Tunnel established: %s <-> %s (%s)", clientConn.RemoteAddr(), backendAddr, host)
 
 	// Bidirectional copy
@@ -246,6 +254,19 @@ func isClosedError(err error) bool {
 	return strings.Contains(errStr, "use of closed network connection") ||
 		strings.Contains(errStr, "connection reset by peer") ||
 		strings.Contains(errStr, "broken pipe")
+}
+
+// Stats returns proxy statistics
+type Stats struct {
+	TunnelsTotal  uint64
+	TunnelsActive int64
+}
+
+func (s *Server) Stats() Stats {
+	return Stats{
+		TunnelsTotal:  s.tunnelsTotal.Load(),
+		TunnelsActive: s.tunnelsActive.Load(),
+	}
 }
 
 // Shutdown gracefully shuts down the proxy server
