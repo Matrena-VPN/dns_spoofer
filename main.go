@@ -58,6 +58,26 @@ var (
 		".clau.de",
 		".claudeusercontent.com",
 		".claudemcpclient.com",
+		// JetBrains
+		".jetbrains.com",
+		".jetbrains.ai",
+		".jetbrains.dev",
+		".jetbrains.net",
+		".jetbrains.org",
+		".jetbrains.ru",
+		".jetbrains.space",
+		".jetbrains.com.cn",
+		".intellij.net",
+		".myjetbrains.com",
+		".jb.gg",
+		".kotl.in",
+		".kotlinlang.org",
+		".talkingkotlin.com",
+		".kotlinconf.com",
+		// Figma
+		".figma.com",
+		".figma.net",
+		".figma.site",
 	}
 	defaultUpstreamDNS = []string{"8.8.8.8:53", "1.1.1.1:53"}
 )

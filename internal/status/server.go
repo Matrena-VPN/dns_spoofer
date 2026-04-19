@@ -95,12 +95,14 @@ func (s *Server) handleCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	spoofIP := s.dns.Stats().SpoofIP
+	dnsActive := s.dns.HasClient(ip)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"client_ip":  ip,
-		"spoof_ip":   spoofIP,
+		"client_ip":   ip,
+		"spoof_ip":    spoofIP,
+		"dns_active":  dnsActive,
 		"using_spoof": ip == spoofIP,
 	})
 }
@@ -140,6 +142,23 @@ func (s *Server) handleDoH(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+
+	// Track the DoH client IP
+	clientIP := r.Header.Get("X-Real-IP")
+	if clientIP == "" {
+		clientIP = r.Header.Get("X-Forwarded-For")
+		if idx := strings.Index(clientIP, ","); idx != -1 {
+			clientIP = strings.TrimSpace(clientIP[:idx])
+		}
+	}
+	if clientIP == "" {
+		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+			clientIP = host
+		}
+	}
+	if clientIP != "" {
+		s.dns.RecordClient(clientIP)
 	}
 
 	respBytes, err := s.dns.HandleMessage(reqBytes)

@@ -33,9 +33,11 @@ type Server struct {
 	wg         sync.WaitGroup
 	startTime  time.Time
 
-	queriesTotal    atomic.Uint64
-	queriesSpoofed  atomic.Uint64
+	queriesTotal     atomic.Uint64
+	queriesSpoofed   atomic.Uint64
 	queriesForwarded atomic.Uint64
+
+	clientIPs sync.Map // map[string]time.Time — tracks IPs that made DNS queries
 }
 
 // New creates a new DNS server
@@ -100,6 +102,12 @@ func syntheticSOA(qname string, ttl uint32) dns.RR {
 
 // handleRequest handles incoming DNS requests
 func (s *Server) handleRequest(w dns.ResponseWriter, r *dns.Msg) {
+	if addr := w.RemoteAddr(); addr != nil {
+		if host, _, err := net.SplitHostPort(addr.String()); err == nil {
+			s.clientIPs.Store(host, time.Now())
+		}
+	}
+
 	m := new(dns.Msg)
 	m.SetReply(r)
 	m.Authoritative = false
@@ -290,6 +298,20 @@ func (w *bufferResponseWriter) Close() error                         { return ni
 func (w *bufferResponseWriter) TsigStatus() error                    { return nil }
 func (w *bufferResponseWriter) TsigTimersOnly(bool)                  {}
 func (w *bufferResponseWriter) Hijack()                              {}
+
+// RecordClient tracks a client IP (used by DoH handler).
+func (s *Server) RecordClient(ip string) {
+	s.clientIPs.Store(ip, time.Now())
+}
+
+// HasClient checks if a client IP made DNS queries within the last 10 minutes.
+func (s *Server) HasClient(ip string) bool {
+	v, ok := s.clientIPs.Load(ip)
+	if !ok {
+		return false
+	}
+	return time.Since(v.(time.Time)) < 10*time.Minute
+}
 
 // Stats returns current server statistics
 type Stats struct {

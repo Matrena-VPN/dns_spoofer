@@ -91,6 +91,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .dt-ms{background:rgba(0,120,212,.06);border:1px solid rgba(0,120,212,.15);color:#0078d4}
 .dt-gh{background:rgba(245,245,245,.05);border:1px solid rgba(245,245,245,.1);color:var(--tertiary)}
 .dt-claude{background:rgba(217,119,87,.06);border:1px solid rgba(217,119,87,.15);color:#d97757}
+.dt-jb{background:rgba(255,66,69,.05);border:1px solid rgba(255,66,69,.12);color:var(--primary)}
+.dt-figma{background:rgba(162,89,255,.06);border:1px solid rgba(162,89,255,.15);color:#a259ff}
 
 /* ─── Setup ─── */
 .setup-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
@@ -230,6 +232,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
         <span class="dt dt-ms">bingapis.com</span>
         <span class="dt dt-ms">edgeservices.bing.com</span>
         <span class="dt dt-ms">edgecopilot.microsoft.com</span>
+      </div>
+    </div>
+
+    <div class="dg">
+      <div class="dg-head">
+        <img class="dg-icon" src="https://www.google.com/s2/favicons?domain=jetbrains.com&sz=64" alt="JetBrains">
+        <div class="dg-name">JetBrains</div>
+        <span class="dg-count">15</span>
+      </div>
+      <div class="dg-tags">
+        <span class="dt dt-jb">jetbrains.com</span>
+        <span class="dt dt-jb">jetbrains.ai</span>
+        <span class="dt dt-jb">jetbrains.dev</span>
+        <span class="dt dt-jb">jetbrains.net</span>
+        <span class="dt dt-jb">jetbrains.org</span>
+        <span class="dt dt-jb">jetbrains.ru</span>
+        <span class="dt dt-jb">jetbrains.space</span>
+        <span class="dt dt-jb">jetbrains.com.cn</span>
+        <span class="dt dt-jb">intellij.net</span>
+        <span class="dt dt-jb">myjetbrains.com</span>
+        <span class="dt dt-jb">jb.gg</span>
+        <span class="dt dt-jb">kotl.in</span>
+        <span class="dt dt-jb">kotlinlang.org</span>
+        <span class="dt dt-jb">talkingkotlin.com</span>
+        <span class="dt dt-jb">kotlinconf.com</span>
+      </div>
+    </div>
+
+    <div class="dg">
+      <div class="dg-head">
+        <img class="dg-icon" src="https://www.google.com/s2/favicons?domain=figma.com&sz=64" alt="Figma">
+        <div class="dg-name">Figma</div>
+        <span class="dg-count">3</span>
+      </div>
+      <div class="dg-tags">
+        <span class="dt dt-figma">figma.com</span>
+        <span class="dt dt-figma">figma.net</span>
+        <span class="dt dt-figma">figma.site</span>
       </div>
     </div>
 
@@ -376,38 +416,6 @@ async function refresh(){
 }
 refresh();setInterval(refresh,3000);
 
-/* DoH probe: send a real DNS query to our DoH endpoint and check the answer */
-async function dohProbe(spoofIP){
-  try{
-    const q=new Uint8Array([0,0,1,0,0,1,0,0,0,0,0,0,7,99,104,97,116,103,112,116,3,99,111,109,0,0,1,0,1]);
-    const b64=btoa(String.fromCharCode(...q)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    const r=await fetch('/dns-query?dns='+b64);
-    if(!r.ok)return false;
-    const buf=await r.arrayBuffer();
-    const v=new DataView(buf);
-    const ancount=v.getUint16(6);
-    let off=12;
-    while(v.getUint8(off)!==0){
-      if((v.getUint8(off)&0xC0)===0xC0){off+=2;break}
-      off+=v.getUint8(off)+1;
-    }
-    if((v.getUint8(off-2)&0xC0)!==0xC0)off++;
-    off+=4;
-    for(let i=0;i<ancount;i++){
-      if((v.getUint8(off)&0xC0)===0xC0)off+=2;
-      else{while(v.getUint8(off)!==0)off+=v.getUint8(off)+1;off++}
-      const typ=v.getUint16(off);off+=2;off+=2;off+=4;
-      const rdl=v.getUint16(off);off+=2;
-      if(typ===1&&rdl===4){
-        const ip=[v.getUint8(off),v.getUint8(off+1),v.getUint8(off+2),v.getUint8(off+3)].join('.');
-        if(ip===spoofIP)return true;
-      }
-      off+=rdl;
-    }
-  }catch(e){}
-  return false;
-}
-
 /* Check */
 async function runCheck(){
   const ci=$('ci'),cl=$('cl'),cm=$('cm'),cd=$('cd'),cb=$('cb');
@@ -418,16 +426,12 @@ async function runCheck(){
   cd.innerHTML='&nbsp;';cb.style.visibility='hidden';
   try{
     const r=await fetch('/api/check'),d=await r.json();
-    const ipOk=d.using_spoof;
-    const dohOk=await dohProbe(d.spoof_ip);
-    if(ipOk){
+    if(d.dns_active){
       ci.className='check-ring ok';ci.textContent='✓';
       cl.className='check-msg ok';cl.textContent='DNS Spoofer активен';
-      cm.className='check-mode dns';cm.textContent='Режим: DNS (весь трафик)';
-    }else if(dohOk){
-      ci.className='check-ring ok';ci.textContent='✓';
-      cl.className='check-msg ok';cl.textContent='DNS Spoofer активен';
-      cm.className='check-mode doh';cm.textContent='Режим: DoH (DNS over HTTPS)';
+      const mode=d.using_spoof?'DNS (весь трафик)':'DoH (DNS over HTTPS)';
+      cm.className='check-mode '+(d.using_spoof?'dns':'doh');
+      cm.textContent='Режим: '+mode;
     }else{
       ci.className='check-ring fail';ci.textContent='✗';
       cl.className='check-msg fail';cl.textContent='DNS Spoofer не подключён';
