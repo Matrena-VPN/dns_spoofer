@@ -78,6 +78,8 @@ var (
 		".figma.com",
 		".figma.net",
 		".figma.site",
+		// Telegram (only api host, not the rest of telegram.org)
+		".api.telegram.org",
 	}
 	defaultUpstreamDNS = []string{"8.8.8.8:53", "1.1.1.1:53"}
 )
